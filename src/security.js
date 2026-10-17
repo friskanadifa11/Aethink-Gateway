@@ -1,0 +1,11 @@
+import { randomBytes, createHash, createCipheriv, createDecipheriv, createHmac, timingSafeEqual } from 'node:crypto';
+export const randomId=()=>randomBytes(12).toString('hex');
+export const token=()=>randomBytes(32).toString('base64url');
+export const hashToken=(x)=>createHash('sha256').update(x).digest('hex');
+export const safeEqual=(a,b)=>{const x=Buffer.from(String(a)),y=Buffer.from(String(b));return x.length===y.length&&timingSafeEqual(x,y)};
+export function seal(text,hex){const key=Buffer.from(hex,'hex');if(key.length!==32)throw Error('ENCRYPTION_KEY must be 32 bytes');const iv=randomBytes(12);const cipher=createCipheriv('aes-256-gcm',key,iv);const c=Buffer.concat([cipher.update(text,'utf8'),cipher.final()]);return Buffer.concat([iv,cipher.getAuthTag(),c]).toString('base64')}
+export function unseal(encoded,hex){const blob=Buffer.from(encoded,'base64');if(blob.length<29)throw Error('Encrypted value invalid');const iv=blob.subarray(0,12),tag=blob.subarray(12,28),payload=blob.subarray(28);const d=createDecipheriv('aes-256-gcm',Buffer.from(hex,'hex'),iv);d.setAuthTag(tag);return Buffer.concat([d.update(payload),d.final()]).toString('utf8')}
+export function sessionSign(payload,secret){const content=Buffer.from(JSON.stringify(payload)).toString('base64url');const signature=createHmac('sha256',secret).update(content).digest('base64url');return content+'.'+signature}
+export function sessionVerify(cookie,secret){if(!cookie||!cookie.includes('.'))return null;const [body,signature]=cookie.split('.');if(!safeEqual(createHmac('sha256',secret).update(body).digest('base64url'),signature))return null;try{const p=JSON.parse(Buffer.from(body,'base64url').toString('utf8'));return p.exp>Date.now()?p:null}catch{return null}}
+export function extractBearer(req){const auth=req.headers.authorization||'';return auth.startsWith('Bearer ')?auth.slice(7).trim():null}
+export function validateUpstream(value,allowHttp=false){const u=new URL(value);if(u.username||u.password||u.search||u.hash)throw Error('Upstream URL must not contain credentials, query or fragment');if(u.protocol!=='https:'&&!(allowHttp&&u.protocol==='http:'))throw Error('Upstream must use HTTPS (unless ALLOW_HTTP_UPSTREAM=true)');return u.origin+u.pathname.replace(/\/$/,'')}
