@@ -24,7 +24,7 @@ jobs:
           fi
           tar -xzf /tmp/aethinkai-source.tar.gz
           git rm -f bootstrap.bundle.b64
-          git rm -f .github/workflows/import-source.yml
+          rm -f .github/workflows/tests.yml
           git add -A
           git -c user.name='aethinkAi Gateway Bot' -c user.email='41898282+github-actions[bot]@users.noreply.github.com' commit -m 'feat: publish aethinkAi Gateway MVP'
           git push origin HEAD:main
