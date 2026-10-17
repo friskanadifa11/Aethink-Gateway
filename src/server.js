@@ -17,7 +17,7 @@ const fail=(res,status,message,code='bad_request')=>json(res,status,{error:{mess
 async function parseBody(req,max=1024*1024){const chunks=[];let size=0;for await(const chunk of req){size+=chunk.length;if(size>max){const e=Error('Payload too large');e.status=413;throw e}chunks.push(chunk)}const src=Buffer.concat(chunks).toString('utf8');try{return JSON.parse(src||'{}')}catch{const e=Error('Invalid JSON body');e.status=400;throw e}}
 function logAudit(action,entity=''){db.prepare('INSERT INTO audits (id,action,entity) VALUES (?,?,?)').run(randomId(),action,entity)}
 function userSession(req){const raw=(req.headers.cookie||'').split(';').map(x=>x.trim()).find(x=>x.startsWith('aethinkai_session='))?.slice('aethinkai_session='.length);return sessionVerify(raw,SESSION_SECRET)}
-function sameOrigin(req){const origin=req.headers.origin;if(!origin)return true;try{const host=(req.headers['x-forwarded-host']||req.headers.host||'').split(',')[0].trim();const url=new URL(origin);const protocol=(req.socket.encrypted||process.env.TRUST_PROXY_HTTPS==='true')?'https:':'http:';return url.host===host&&url.protocol===protocol}catch{return false}}
+function sameOrigin(req){const origin=req.headers.origin;if(!origin)return true;try{const host=(req.headers['x-forwarded-host']||req.headers.host||'').split(',')[0].trim();const url=new URL(origin);const protocol=(req.socket.encrypted||process.env.TRUST_PROXY_HTTPS==='true')?'https:':'http:';if(url.host===host&&url.protocol===protocol)return true;const pub=process.env.PUBLIC_ORIGIN;if(pub){const p=new URL(pub);if(url.host===p.host&&url.protocol===p.protocol)return true}return false}catch{return false}}
 function adminGate(req,res,method){if(!userSession(req)){fail(res,401,'Admin login required','unauthorized');return false}if(method!=='GET'&&!sameOrigin(req)){fail(res,403,'Cross-origin mutation blocked','csrf_rejected');return false}return true}
 function authenticatedKey(req){const raw=extractBearer(req);if(!raw||!raw.startsWith('aet_'))return null;const key=db.prepare('SELECT * FROM api_keys WHERE digest=? AND enabled=1').get(hashToken(raw));if(!key)return null;db.prepare("UPDATE api_keys SET last_used_at=datetime('now') WHERE id=?").run(key.id);return key}
 function keyRateLimit(k){const now=Date.now(),bucket=limiters.get(k.id)||[];const recent=bucket.filter(t=>now-t<60000);if(recent.length>=k.rpm){limiters.set(k.id,recent);return false}recent.push(now);limiters.set(k.id,recent);return true}
@@ -32,7 +32,7 @@ async function admin(req,res,path,method){
   if(bucket.length>=12)return fail(res,429,'Too many login attempts. Try again later','rate_limited');
   const data=await parseBody(req);
   if(!safeEqual(data.password||'',ADMIN_PASSWORD)){bucket.push(now);loginLimits.set(ip,bucket);return fail(res,401,'Incorrect password','unauthorized')}
-  loginLimits.delete(ip);const secure=req.socket.encrypted||process.env.TRUST_PROXY_HTTPS==='true';const cookie=`aethinkai_session=${sessionSign({role:'admin',exp:Date.now()+8*3600000},SESSION_SECRET)}; HttpOnly; Path=/; SameSite=Strict; Max-Age=28800${secure?'; Secure':''}`;
+  loginLimits.delete(ip);let originProto='';try{originProto=new URL(req.headers.origin||'').protocol}catch{}const secure=req.socket.encrypted||process.env.TRUST_PROXY_HTTPS==='true'||originProto==='https:';const cookie=`aethinkai_session=${sessionSign({role:'admin',exp:Date.now()+8*3600000},SESSION_SECRET)}; HttpOnly; Path=/; SameSite=Strict; Max-Age=28800${secure?'; Secure':''}`;
   return json(res,200,{authenticated:true},{'Set-Cookie':cookie});
  }
  if(!adminGate(req,res,method))return;
@@ -53,6 +53,11 @@ async function admin(req,res,path,method){
  let m=path.match(/^\/admin\/providers\/([a-f0-9]{24})$/);
  if(m&&method==='PATCH'){const b=await parseBody(req);if(typeof b.enabled!=='boolean')throw Error('enabled must be a boolean');const q=db.prepare('UPDATE providers SET enabled=? WHERE id=?').run(b.enabled?1:0,m[1]);if(!q.changes)return fail(res,404,'Provider not found');logAudit('provider.updated',m[1]);return json(res,200,{ok:true})}
  if(m&&method==='DELETE'){const count=db.prepare('SELECT candidates FROM routes').all().some(r=>JSON.parse(r.candidates).some(x=>x.providerId===m[1]));if(count)return fail(res,409,'Remove this provider from routing policies first');const q=db.prepare('DELETE FROM providers WHERE id=?').run(m[1]);if(!q.changes)return fail(res,404,'Provider not found');logAudit('provider.deleted',m[1]);return json(res,200,{ok:true})}
+ let tm=path.match(/^\/admin\/providers\/([a-f0-9]{24})\/models$/);
+ if(tm&&method==='POST'){
+  const p=db.prepare('SELECT * FROM providers WHERE id=?').get(tm[1]);if(!p)return fail(res,404,'Provider not found');
+  try{const response=await fetch(p.base_url.replace(/\/$/,'')+'/models',{headers:{Authorization:'Bearer '+unseal(p.credential,ENCRYPTION_KEY)},signal:AbortSignal.timeout(15000),redirect:'error'});if(!response.ok){await response.body?.cancel().catch(()=>{});return fail(res,502,'Upstream /models returned HTTP '+response.status)}const data=await response.json().catch(()=>null);const models=Array.isArray(data?.data)?[...new Set(data.data.map(m=>String(m.id??m.name??'')).filter(Boolean))]:[];return json(res,200,{models})}catch(e){return fail(res,502,'Could not reach upstream /models')}
+ }
  if(path==='/admin/routes'&&method==='GET')return json(res,200,listRoutes(db));
  if(path==='/admin/routes'&&method==='POST'){const b=await parseBody(req),alias=validateAlias(b.alias),c=validateCandidates(b.candidates),id=randomId();db.prepare('INSERT INTO routes (id,alias,candidates) VALUES (?,?,?)').run(id,alias,JSON.stringify(c));logAudit('route.created',id);return json(res,201,{id,alias,candidates:c})}
  m=path.match(/^\/admin\/routes\/([a-f0-9]{24})$/);
