@@ -1,19 +1,79 @@
+name: aethinkai-gateway
 services:
-  gateway:
-    build: .
-    restart: unless-stopped
-    env_file: .env
+  clirelay-init:
+    image: ${CLIRELAY_IMAGE:-ghcr.io/kittors/clirelay:latest}
+    command: ["clirelay-init-env"]
     environment:
-      HOST: 0.0.0.0
-      DATABASE_PATH: /data/aethinkai.db
-    ports:
-      - '127.0.0.1:8787:8787'
+      CLI_PROXY_IMAGE: ${CLIRELAY_IMAGE:-ghcr.io/kittors/clirelay:latest}
+      CLIRELAY_PROJECT_DIR: ${PWD:-.}
+      CLIRELAY_ENV_FILE: /clirelay-deploy/.env
     volumes:
-      - aethinkai_data:/data
+      - ./:/clirelay-deploy
+    restart: "no"
+
+  cli-proxy-api:
+    image: ${CLIRELAY_IMAGE:-ghcr.io/kittors/clirelay:latest}
+    entrypoint: ["sh", "-c", "set -a; . /clirelay-deploy/.env; set +a; exec docker-entrypoint.sh ./CLIProxyAPI"]
+    environment:
+      AUTH_PATH: /CLIProxyAPI/auths
+      CLIRELAY_LOCALE: en
+      LANG: C.UTF-8
+    ports:
+      - "127.0.0.1:8317:8317"
+    volumes:
+      - ./config.yaml:/CLIProxyAPI/config.yaml
+      - ./auths:/CLIProxyAPI/auths
+      - ./logs:/CLIProxyAPI/logs
+      - ./data:/CLIProxyAPI/data
+      - ./:/clirelay-deploy
+    depends_on:
+      clirelay-init:
+        condition: service_completed_successfully
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+  postgres:
+    image: postgres:15-alpine
+    entrypoint: ["sh", "-c", "set -a; . /clirelay-deploy/.env; set +a; export POSTGRES_DB=\"$$CLIRELAY_POSTGRES_DB\" POSTGRES_USER=\"$$CLIRELAY_POSTGRES_USER\" POSTGRES_PASSWORD=\"$$CLIRELAY_POSTGRES_PASSWORD\"; exec docker-entrypoint.sh postgres"]
+    volumes:
+      - ./postgres-data:/var/lib/postgresql/data
+      - ./:/clirelay-deploy
     healthcheck:
-      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:8787/healthz').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
-      interval: 30s
+      test: ["CMD-SHELL", ". /clirelay-deploy/.env; pg_isready -U \"$$CLIRELAY_POSTGRES_USER\" -d \"$$CLIRELAY_POSTGRES_DB\""]
+      interval: 5s
       timeout: 5s
-      retries: 3
-volumes:
-  aethinkai_data:
+      retries: 20
+    depends_on:
+      clirelay-init:
+        condition: service_completed_successfully
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - ./redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    restart: unless-stopped
+
+  aethinkai-web:
+    image: node:22-alpine
+    working_dir: /app
+    command: ["node", "gateway.js"]
+    environment:
+      PORT: 8787
+      UPSTREAM_URL: http://cli-proxy-api:8317
+    volumes:
+      - ./branding:/app:ro
+    ports:
+      - "${AETHINK_PORT:-8787}:8787"
+    depends_on:
+      - cli-proxy-api
+    restart: unless-stopped

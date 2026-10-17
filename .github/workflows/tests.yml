@@ -1,7 +1,9 @@
-name: aethinkAi quality checks
+name: AethinkAI Gateway checks
 on:
   push:
   pull_request:
+permissions:
+  contents: read
 jobs:
   test:
     runs-on: ubuntu-latest
@@ -9,6 +11,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: '22.16.0'
-      - run: npm run check
+          node-version: '22'
       - run: npm test
+      - run: node --check branding/gateway.js && node --check branding/client.js
+      - run: docker compose -f compose.yaml config --quiet

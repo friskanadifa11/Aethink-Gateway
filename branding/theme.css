@@ -1,0 +1,53 @@
+/* AethinkAI Gateway AI: original theme overlay, upstream panel code stays upstream */
+:root {
+  --aethink-primary: #2563eb;
+  --aethink-ink: #e8f0ff;
+  --aethink-cyan: #06b6d4;
+}
+body {
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+html {
+  scroll-behavior: smooth;
+}
+[data-sidebar-logo] img[data-aethink-logo] {
+  border-radius: 10px;
+  object-fit: contain;
+  filter: drop-shadow(0 6px 14px rgba(17, 95, 216, .18));
+}
+[data-aethink-signature] {
+  font-weight: 700;
+  font-size: 11px;
+  letter-spacing: .045em;
+  line-height: 1.5;
+  color: #4285f4;
+  padding: 6px 18px 10px;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.aethink-brand { font-weight: 600 !important; letter-spacing: -.015em; }
+a, button, input, select, textarea {
+  -webkit-tap-highlight-color: transparent;
+}
+button, a {
+  transition-property: background-color, border-color, color, box-shadow, opacity, transform;
+  transition-duration: 180ms;
+  transition-timing-function: cubic-bezier(.2,.8,.2,1);
+}
+a:focus-visible, button:focus-visible {
+  outline: 2px solid #3b82f6;
+  outline-offset: 3px;
+}
+aside[data-collapsed="true"] [data-aethink-signature] { display: none; }
+@media (max-width: 767px) {
+  [data-aethink-signature] { font-size: 10px; padding-bottom: 6px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: .001ms !important;
+    transition-duration: .001ms !important;
+    scroll-behavior: auto !important;
+  }
+}

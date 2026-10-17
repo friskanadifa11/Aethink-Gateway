@@ -1,6 +1,14 @@
 {
-  "name":"aethinkai-gateway","version":"0.1.0","private":true,"type":"module",
-  "description":"aethinkAi: self-hosted OpenAI-compatible AI gateway with animated operator console",
-  "engines":{"node":">=22.16.0"},
-  "scripts":{"setup":"node scripts/setup.js","start":"node src/server.js","dev":"node --watch src/server.js","test":"node --test tests/*.test.js","check":"node --check src/server.js && node --check src/db.js && node --check src/security.js && node --check public/app.js"}
+  "name": "aethinkai-gateway-ai",
+  "version": "1.0.0",
+  "private": true,
+  "description": "CliRelay deployment with an original AethinkAI branded management shell",
+  "type": "commonjs",
+  "scripts": {
+    "test": "node --test tests/*.test.js",
+    "start": "node branding/gateway.js"
+  },
+  "engines": {
+    "node": ">=22"
+  }
 }
