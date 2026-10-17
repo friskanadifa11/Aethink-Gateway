@@ -1,0 +1,30 @@
+name: Import aethinkAi Gateway source
+on:
+  push:
+    paths:
+      - 'bootstrap.bundle.b64'
+permissions:
+  contents: write
+jobs:
+  import:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+      - name: Expand verified source archive
+        shell: bash
+        run: |
+          set -euo pipefail
+          base64 --decode bootstrap.bundle.b64 > /tmp/aethinkai-source.tar.gz
+          tar -tzf /tmp/aethinkai-source.tar.gz > /tmp/archive-files.txt
+          if grep -E '(^/|(^|/)\.\.(/|$))' /tmp/archive-files.txt; then
+            echo 'Unsafe archive path' >&2
+            exit 1
+          fi
+          tar -xzf /tmp/aethinkai-source.tar.gz
+          git rm -f bootstrap.bundle.b64
+          git rm -f .github/workflows/import-source.yml
+          git add -A
+          git -c user.name='aethinkAi Gateway Bot' -c user.email='41898282+github-actions[bot]@users.noreply.github.com' commit -m 'feat: publish aethinkAi Gateway MVP'
+          git push origin HEAD:main
