@@ -1,0 +1,144 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>AethinkAI Gateway AI</title>
+<!--
+  DEV PREVIEW HARNESS — not shipped, not served by branding/gateway.js.
+
+  Purpose: render the brand layer (theme.css + client.js) over a panel whose
+  DOM matches the shape the overlay targets (aside + span[data-sidebar-logo] +
+  nav[aria-label] + main), so the overlay can be reviewed and regression-checked
+  without a live CliRelay/codeProxy container.
+
+  Every figure below is static placeholder text for layout review only.
+  It is NOT a dashboard and must never be deployed.
+
+  Run it through the real proxy:
+      node branding/preview/serve-preview.js
+  then open http://localhost:8788/manage
+-->
+<link rel="icon" type="image/svg+xml" href="/brand/logo.svg" />
+<link rel="stylesheet" href="/brand/theme.css" />
+<style>
+  /* Stand-in for the upstream panel's own utility layer. Deliberately sets a
+     couple of values the brand layer also sets, to prove upstream utilities
+     still win (the :where() base is zero-specificity). */
+  .u-pad { padding: 24px 28px; }
+  .u-card { padding: 18px 20px; border: 1px solid #24384e; border-radius: 10px; background: #0d1521; }
+  .u-row { display: flex; align-items: center; gap: 12px; }
+  .upstream-forced { color: #f0a0a0; font-weight: 700; }
+</style>
+</head>
+<body>
+<div class="app">
+  <aside data-collapsed="false">
+    <span data-sidebar-logo></span>
+    <div class="brandline">
+      <div>
+        <div class="brandname">CliRelay</div>
+        <div>GATEWAY</div>
+      </div>
+    </div>
+    <nav aria-label="Primary">
+      <a href="/dashboard" title="Overview"><span>Overview</span></a>
+      <a href="/runtime/monitor" title="Monitor"><span>Monitor</span></a>
+      <a href="/runtime/request-logs" title="Logs"><span>Logs</span></a>
+      <a href="/access/ai-providers" title="Providers"><span>Providers</span></a>
+      <a href="/access/ai-accounts" title="Accounts"><span>Accounts</span></a>
+      <a href="/access/api-keys" title="API Keys"><span>API Keys</span></a>
+      <a href="/models/channel-groups" title="Groups"><span>Groups</span></a>
+      <a href="/models/catalog" title="Catalog"><span>Catalog</span></a>
+      <a href="/system/config" title="Settings"><span>Settings</span></a>
+      <a href="/billing"><span>Billing</span></a>
+      <a href="/resellers"><span>Resellers</span></a>
+      <a href="/orgs"><span>Organizations</span></a>
+      <a href="/playground"><span>Playground</span></a>
+      <a href="/account-market"><span>Account Market</span></a>
+      <a href="https://example.com/external"><span>External</span></a>
+    </nav>
+  </aside>
+
+  <section class="workspace">
+    <header class="topbar">
+      <div>AETHINKAI / GATEWAY AI</div>
+      <div class="u-row">
+        <button type="button" aria-label="Search">Search</button>
+        <div class="avatar">AI</div>
+      </div>
+    </header>
+
+    <main>
+      <p class="breadcrumb">WORKSPACE / ROUTING / PRODUCTION</p>
+      <h1>Route orchestration<span>.</span></h1>
+      <p class="upstream-forced">This paragraph carries an upstream utility class and must keep its own colour.</p>
+
+      <div class="u-row m-actions">
+        <button type="button">Last 24 hours</button>
+        <button type="button">New route</button>
+        <button type="button" disabled>Publish</button>
+      </div>
+
+      <section class="strip">
+        <div class="u-card"><div>ACTIVE ROUTES</div><b>—</b><small>No data yet</small></div>
+        <div class="u-card"><div>SUCCESS RATE</div><b>—</b><small>No data yet</small></div>
+        <div class="u-card"><div>P95 LATENCY</div><b>—</b><small>No data yet</small></div>
+        <div class="u-card"><div>FALLBACK EVENTS</div><b>—</b><small>No data yet</small></div>
+      </section>
+
+      <div class="layout">
+        <section class="u-card">
+          <h2>Primary routing graph</h2>
+          <div data-aethink-grid class="graph">
+            <div class="node input"><div>INPUT</div><strong>Client request</strong><small>POST /v1/chat/completions</small></div>
+            <div class="node router"><div>ROUTER</div><strong>smart-chat</strong><small>Priority + ordered fallback</small></div>
+            <div class="node output"><div>PRIMARY</div><strong>— not configured —</strong><small>No target published</small></div>
+          </div>
+          <p>Stream forwarding enabled · Retries: 2 · Timeout: 30s</p>
+        </section>
+
+        <aside class="u-card">
+          <h2>Provider signal</h2>
+          <div class="pr"><i class="aethink-dot" data-state="untested"></i><b>OpenAI</b><span>Not tested</span></div>
+          <div class="aethink-meter"><i style="width:0%"></i></div>
+          <div class="pr"><i class="aethink-dot" data-state="healthy"></i><b>Anthropic</b><span>Healthy</span></div>
+          <div class="aethink-meter"><i style="width:92%"></i></div>
+          <div class="pr"><i class="aethink-dot" data-state="error"></i><b>Gemini</b><span>Error</span></div>
+          <div class="aethink-meter"><i style="width:18%"></i></div>
+
+          <div class="aethink-empty">
+            <strong>No incidents detected</strong>
+            <small>Incident reporting appears here once the gateway records real events.</small>
+          </div>
+        </aside>
+      </div>
+
+      <section class="u-card">
+        <h2>Request logs</h2>
+        <table>
+          <thead><tr><th>Time (UTC)</th><th>Trace ID</th><th>Alias</th><th>Status</th><th>Latency</th><th>Tokens in/out</th></tr></thead>
+          <tbody>
+            <tr><td>—</td><td><code>—</code></td><td>—</td><td>—</td><td>—</td><td>—</td></tr>
+            <tr><td>—</td><td><code>—</code></td><td>—</td><td>—</td><td>—</td><td>—</td></tr>
+          </tbody>
+        </table>
+        <div class="aethink-empty">
+          <strong>No traffic yet</strong>
+          <small>Add a provider, publish a route and send a test request to populate this table.</small>
+        </div>
+      </section>
+
+      <section class="u-card">
+        <h2>API key</h2>
+        <input type="text" placeholder="Key label" />
+        <input type="password" placeholder="Secret" />
+        <select><option>24h</option><option>7d</option><option>30d</option></select>
+        <button type="button" class="aethink-danger">Revoke key</button>
+      </section>
+    </main>
+  </section>
+</div>
+<script defer src="/brand/client.js"></script>
+</body>
+</html>

@@ -6,7 +6,8 @@
   "type": "commonjs",
   "scripts": {
     "test": "node --test tests/*.test.js",
-    "start": "node branding/gateway.js"
+    "start": "node branding/gateway.js",
+    "preview": "node branding/preview/serve-preview.js"
   },
   "engines": {
     "node": ">=22"
