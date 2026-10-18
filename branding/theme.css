@@ -1,53 +1,468 @@
-/* AethinkAI Gateway AI: original theme overlay, upstream panel code stays upstream */
+/* ==========================================================================
+   AethinkAI Gateway AI — "Signal / Routing-First" brand layer
+   Design reference: design-reference/03-routing-signal + PRD §2
+
+   LAYER STRATEGY (why this file is written the way it is)
+     · :root tokens ............ the design source of truth (PRD §2.2).
+                                 Upstream code reads these; nothing here
+                                 depends on a class name we do not control.
+     · :where(...) element base  ZERO specificity. The upstream panel's own
+                                 utility classes (0,1,0) therefore always win
+                                 wherever upstream states an intent. This is
+                                 what keeps the overlay from breaking the
+                                 panel it decorates.
+     · [data-aethink-*] ........ nodes this layer owns outright (logo,
+                                 signature, rail marks). Safe to style hard.
+
+   Never add `body { min-width: ... }` here: it forces a desktop-width
+   document onto phones (PRD §2.3).
+   ========================================================================== */
+
+/* ── 1. Design tokens ──────────────────────────────────────────────────── */
 :root {
-  --aethink-primary: #2563eb;
-  --aethink-ink: #e8f0ff;
-  --aethink-cyan: #06b6d4;
+  /* Force native form controls, scrollbars and canvas to render dark
+     instead of letting the OS paint light widgets over a dark shell. */
+  color-scheme: dark;
+
+  /* Surfaces */
+  --bg-app: #090d13;
+  --bg-rail: #0a111b;
+  --bg-topbar: #0b1019;
+  --surface-1: #0d1521;
+  --surface-2: #101f30;
+  --surface-raised: #142b40;
+
+  /* Borders */
+  --border-default: #24384e;
+  --border-subtle: #1e2d40;
+  --border-strong: #315074;
+
+  /* Text */
+  --text-primary: #eaf0f7;
+  --text-secondary: #a6bbd0;
+  --text-muted: #718ba6;
+  --text-faint: #5b7793;
+
+  /* Accents */
+  --accent-blue: #2978ce;
+  --accent-blue-hover: #3487dd;
+  --accent-cyan: #3bbdcc;
+  --accent-cyan-strong: #6edbde;
+
+  /* Status */
+  --success: #43c5a3;
+  --warning: #e5bd70;
+  --danger: #f07985;
+  --info: #6aa6d8;
+
+  /* Radius */
+  --radius-sm: 7px;
+  --radius-md: 10px;
+  --radius-lg: 12px;
+
+  /* Layout */
+  --rail-width: 88px;
+  --content-max: 1550px;
+
+  /* Type */
+  --aethink-font-ui: "Inter", "Plus Jakarta Sans", system-ui, -apple-system,
+    BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --aethink-font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo,
+    Consolas, "Liberation Mono", monospace;
+
+  /* Motion (PRD §2.4) */
+  --aethink-dur-fast: 140ms;
+  --aethink-dur-base: 180ms;
+  --aethink-dur-page: 200ms;
+  --aethink-ease-out: cubic-bezier(.2, .8, .2, 1);
+  --aethink-ease-standard: cubic-bezier(.4, 0, .2, 1);
+
+  /* Ambient dotted grid used by the routing canvas identity */
+  --aethink-grid-dot: #193348;
+  --aethink-grid-size: 20px;
 }
-body {
+
+/* ── 2. Base + typography ──────────────────────────────────────────────── */
+:where(html) {
+  background-color: var(--bg-app);
+  scroll-behavior: smooth;
+  -webkit-text-size-adjust: 100%;
+}
+
+:where(body) {
+  background-color: var(--bg-app);
+  color: var(--text-primary);
+  font-family: var(--aethink-font-ui);
+  font-synthesis-weight: none;
   -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;
 }
-html {
+
+/* Identifiers, endpoint paths, hashes, status codes and IDs are mono and
+   tabular so columns of numbers line up (PRD §2.2). */
+:where(code, pre, kbd, samp, [data-aethink-mono]) {
+  font-family: var(--aethink-font-mono);
+  font-variant-numeric: tabular-nums;
+  font-size: .92em;
+}
+
+:where(table, [data-aethink-numeric]) {
+  font-variant-numeric: tabular-nums;
+}
+
+:where(::selection) {
+  background: color-mix(in srgb, var(--accent-cyan) 32%, transparent);
+  color: var(--text-primary);
+}
+
+:where(a) {
+  text-decoration: none;
+  color: inherit;
+}
+
+/* ── 3. Scrollbars ─────────────────────────────────────────────────────── */
+:where(*) {
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-strong) transparent;
+}
+
+:where(::-webkit-scrollbar) {
+  width: 10px;
+  height: 10px;
+}
+
+:where(::-webkit-scrollbar-track) {
+  background: transparent;
+}
+
+:where(::-webkit-scrollbar-thumb) {
+  background: var(--border-default);
+  border: 2px solid transparent;
+  background-clip: content-box;
+  border-radius: 8px;
+}
+
+:where(::-webkit-scrollbar-thumb:hover) {
+  background: var(--border-strong);
+  background-clip: content-box;
+}
+
+/* ── 4. Focus, targets, accessibility ──────────────────────────────────── */
+:where(a, button, input, select, textarea, [role="button"], [tabindex]) {
+  -webkit-tap-highlight-color: transparent;
+}
+
+:where(a, button, input, select, textarea, [role="button"], summary, [tabindex]):focus-visible {
+  outline: 2px solid var(--accent-cyan-strong);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}
+
+/* Do not remove the browser's focus ring on mouse users, but never show a
+   ring on a control that cannot be reached by keyboard. */
+:where([tabindex="-1"]):focus {
+  outline: none;
+}
+
+/* Every interactive control meets the 44 px minimum touch target on
+   coarse pointers (PRD §2.2 / §2.3). */
+@media (pointer: coarse) {
+  :where(button, [role="button"], a[href], input[type="checkbox"], input[type="radio"], summary) {
+    min-height: 44px;
+  }
+}
+
+/* Skip link injected by client.js — lets keyboard users bypass the rail. */
+.aethink-skip-link {
+  position: fixed;
+  top: 8px;
+  left: 8px;
+  z-index: 2147483000;
+  transform: translateY(-160%);
+  padding: 10px 14px;
+  background: var(--surface-raised);
+  color: var(--text-primary);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+  font-weight: 650;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, .45);
+  transition: transform var(--aethink-dur-base) var(--aethink-ease-out);
+}
+
+.aethink-skip-link:focus {
+  transform: translateY(0);
+}
+
+/* ── 5. Motion ─────────────────────────────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  :where(*, *::before, *::after) {
+    animation-duration: .001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .001ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Explicit operator override, set by client.js on <html data-aethink-motion>.
+   "reduced"/"off" must win over the OS preference in both directions. */
+html[data-aethink-motion="off"] :where(*, *::before, *::after),
+html[data-aethink-motion="reduced"] :where(*, *::before, *::after) {
+  animation-duration: .001ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: .001ms !important;
+  scroll-behavior: auto !important;
+}
+
+html[data-aethink-motion="full"] :where(*) {
   scroll-behavior: smooth;
 }
-[data-sidebar-logo] img[data-aethink-logo] {
+
+/* Page-change motion: content fades and rises 8 px (PRD §2.4). Suppressed
+   automatically by the reduced/off blocks above. */
+@keyframes aethink-page-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+html[data-aethink-page="enter"] :where(main, [role="main"]) {
+  animation: aethink-page-in var(--aethink-dur-page) var(--aethink-ease-out) both;
+}
+
+/* One-off status pulse — settles, never an endless alarm (PRD §2.4). */
+@keyframes aethink-pulse-once {
+  0%   { box-shadow: 0 0 0 0 color-mix(in srgb, var(--success) 45%, transparent); }
+  100% { box-shadow: 0 0 0 10px color-mix(in srgb, var(--success) 0%, transparent); }
+}
+
+/* Shared interactive transition. Declared with :where() so upstream
+   component styles still take precedence. */
+:where(button, a, [role="button"], input, select, textarea, summary) {
+  transition-property: background-color, border-color, color, box-shadow, opacity, transform;
+  transition-duration: var(--aethink-dur-base);
+  transition-timing-function: var(--aethink-ease-out);
+}
+
+/* ── 6. Branded chrome owned by this layer ─────────────────────────────── */
+[data-sidebar-logo] img[data-aethink-logo],
+img[data-aethink-logo] {
+  width: 34px;
+  height: 34px;
   border-radius: 10px;
   object-fit: contain;
-  filter: drop-shadow(0 6px 14px rgba(17, 95, 216, .18));
+  filter: drop-shadow(0 6px 14px rgba(17, 95, 216, .22));
 }
+
 [data-aethink-signature] {
-  font-weight: 700;
   font-size: 11px;
+  font-weight: 700;
   letter-spacing: .045em;
   line-height: 1.5;
-  color: #4285f4;
-  padding: 6px 18px 10px;
+  color: var(--accent-cyan-strong);
+  padding: 4px 14px 10px;
   overflow: hidden;
   white-space: nowrap;
   text-overflow: ellipsis;
 }
-.aethink-brand { font-weight: 600 !important; letter-spacing: -.015em; }
-a, button, input, select, textarea {
-  -webkit-tap-highlight-color: transparent;
+
+[data-aethink-signature]::before {
+  content: "";
+  display: block;
+  width: 22px;
+  height: 2px;
+  margin-bottom: 9px;
+  border-radius: 2px;
+  background: linear-gradient(90deg, var(--accent-blue), var(--accent-cyan));
 }
-button, a {
-  transition-property: background-color, border-color, color, box-shadow, opacity, transform;
-  transition-duration: 180ms;
-  transition-timing-function: cubic-bezier(.2,.8,.2,1);
+
+.aethink-brand {
+  font-weight: 650 !important;
+  letter-spacing: -.015em;
 }
-a:focus-visible, button:focus-visible {
-  outline: 2px solid #3b82f6;
-  outline-offset: 3px;
+
+/* Mark the active destination. client.js sets aria-current/title; the
+   upstream router keeps ownership of its own "selected" styling. */
+:where(a[aria-current="page"], a[data-aethink-current="true"]) span {
+  color: var(--accent-cyan-strong);
 }
-aside[data-collapsed="true"] [data-aethink-signature] { display: none; }
-@media (max-width: 767px) {
-  [data-aethink-signature] { font-size: 10px; padding-bottom: 6px; }
+
+/* Icon-only rail links get a real accessible name + tooltip from client.js. */
+:where(nav a[data-aethink-icon-link="true"]) {
+  position: relative;
 }
-@media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after {
-    animation-duration: .001ms !important;
-    transition-duration: .001ms !important;
-    scroll-behavior: auto !important;
+
+/* ── 7. Surfaces: cards, panels, dialogs ───────────────────────────────── */
+:where([role="dialog"], dialog, [aria-modal="true"]) {
+  background-color: var(--surface-1);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-lg);
+  color: var(--text-primary);
+  box-shadow: 0 28px 70px rgba(0, 0, 0, .55);
+}
+
+:where(dialog::backdrop, [role="dialog"] ~ [data-overlay]) {
+  background-color: rgba(4, 8, 13, .72);
+  backdrop-filter: blur(2px);
+}
+
+/* Routing-canvas identity: the quiet dotted grid. Applied only to elements
+   explicitly opted in, so it can never smear across arbitrary content. */
+[data-aethink-grid] {
+  background-color: #0b131e;
+  background-image: radial-gradient(var(--aethink-grid-dot) 1px, transparent 1px);
+  background-size: var(--aethink-grid-size) var(--aethink-grid-size);
+}
+
+/* ── 8. Controls ───────────────────────────────────────────────────────── */
+:where(input, select, textarea) {
+  accent-color: var(--accent-cyan);
+  caret-color: var(--accent-cyan-strong);
+}
+
+:where(input::placeholder, textarea::placeholder) {
+  color: var(--text-faint);
+  opacity: 1;
+}
+
+:where(input[type="checkbox"], input[type="radio"], input[type="range"]) {
+  cursor: pointer;
+}
+
+:where(button, [role="button"]) {
+  cursor: pointer;
+}
+
+:where(button:disabled, input:disabled, select:disabled, textarea:disabled, [aria-disabled="true"]) {
+  cursor: not-allowed;
+  opacity: .62;
+}
+
+/* Destructive intent is readable at a glance (PRD §9 posture). */
+:where(button[data-variant="destructive"], .aethink-danger) {
+  border-color: color-mix(in srgb, var(--danger) 45%, transparent);
+  color: var(--danger);
+}
+
+/* ── 9. Data display ───────────────────────────────────────────────────── */
+:where(table) {
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+:where(table th) {
+  font-size: 11px;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  font-weight: 700;
+}
+
+:where(table td, table th) {
+  border-color: var(--border-subtle);
+}
+
+/* Sticky header keeps long request logs readable while scrolling. */
+@media (min-width: 768px) {
+  :where(table thead th) {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    background-color: var(--surface-1);
   }
+}
+
+/* Status dots used by health/signal components. */
+.aethink-dot {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--text-muted);
+}
+
+.aethink-dot[data-state="healthy"] { background: var(--success); animation: aethink-pulse-once 600ms var(--aethink-ease-out) 1; }
+.aethink-dot[data-state="degraded"] { background: var(--warning); }
+.aethink-dot[data-state="error"],
+.aethink-dot[data-state="down"] { background: var(--danger); }
+.aethink-dot[data-state="untested"],
+.aethink-dot[data-state="disabled"] { background: var(--text-faint); }
+
+/* Health meter (provider signal). */
+.aethink-meter {
+  height: 3px;
+  border-radius: 4px;
+  background: #1d2f41;
+  overflow: hidden;
+}
+
+.aethink-meter > i {
+  display: block;
+  height: 100%;
+  border-radius: 4px;
+  background: var(--accent-cyan);
+}
+
+/* ── 10. Empty / error states ──────────────────────────────────────────── */
+.aethink-empty {
+  display: grid;
+  place-items: center;
+  gap: 6px;
+  padding: 42px 20px;
+  text-align: center;
+  color: var(--text-muted);
+}
+
+.aethink-empty > strong {
+  color: var(--text-secondary);
+  font-size: 14px;
+  font-weight: 650;
+}
+
+.aethink-empty > small {
+  font-size: 12px;
+  max-width: 46ch;
+  line-height: 1.6;
+}
+
+/* ── 11. Responsive ────────────────────────────────────────────────────── */
+@media (max-width: 1330px) {
+  :root { --content-max: 100%; }
+}
+
+@media (max-width: 767px) {
+  :where(main, [role="main"]) {
+    padding-inline: 16px;
+  }
+
+  [data-aethink-signature] {
+    font-size: 10px;
+    padding-bottom: 6px;
+  }
+
+  /* Wide data tables scroll inside their own card instead of widening the
+     document (PRD §2.3, 390 px row). */
+  :where(table) {
+    display: block;
+    width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+}
+
+aside[data-collapsed="true"] [data-aethink-signature] {
+  display: none;
+}
+
+/* Off-screen helper for labels that add meaning without visual weight. */
+.aethink-sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
 }
