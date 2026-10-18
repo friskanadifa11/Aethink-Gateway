@@ -46,7 +46,8 @@ docker compose ps
 docker compose logs -f cli-proxy-api
 docker compose restart cli-proxy-api
 docker compose down
-npm test
+npm test            # proxy + branding contract tests (12)
+npm run preview     # dev-only: overlay over a mock panel, no Docker needed
 ```
 
 ### Security notes
@@ -62,6 +63,30 @@ npm test
 ## Design approach
 
 The backend and the official codeProxy panel are sourced from upstream rather than copying hundreds of files into this repository. The branding service injects a small, readable AethinkAI layer into the original panel shell, while all actions remain backed by CliRelay. This preserves upstream protocol support and the built-in management workflows.
+
+The brand layer follows the **"03 Signal / Routing-First"** direction from the
+specification pack: dark navy/cyan operator console, mono type for identifiers
+and endpoints, tabular figures for metrics, a dotted routing-canvas treatment,
+and restrained motion.
+
+It is written in three layers so it can restyle the shell without being able to
+break it (see `docs/DECISIONS.md`, D-006):
+
+| Layer | File | Specificity | Purpose |
+|---|---|---|---|
+| Design tokens | `branding/theme.css` (`:root`) | — | colours, radii, type, motion, layout constants |
+| Element/role base | `branding/theme.css` (`:where(...)`) | **0** | typography, surfaces, controls, tables, focus rings, scrollbars |
+| Owned chrome | `branding/theme.css` (`[data-aethink-*]`), `branding/client.js` | — | logo, product name, signature, rail marking, skip link |
+
+Because the base layer is zero-specificity, every upstream utility class still
+wins wherever the panel states its own intent — the overlay decorates the panel
+instead of fighting it. Nothing in the layer renders a metric, health value or
+status of its own; every number on screen must come from a real backend
+response.
+
+Motion follows the OS by default and can be pinned by the operator
+(`full` / `reduced` / `off`); the resolved value is exposed on
+`<html data-aethink-motion>` and driven through `window.AethinkBrand`.
 
 **Limitation:** codeProxy explicitly says it has *not published a license file*. The codeProxy frontend is used as an upstream-hosted panel here, **not relicensed or redistributed as AethinkAI source**. Obtain the author's permission/license before commercially redistributing or modifying that frontend.
 
